@@ -1,0 +1,163 @@
+<style>
+    html, body {
+      height: 100%; /* Pastikan elemen html dan body memenuhi seluruh layar */
+      margin: 0; /* Menghilangkan margin default */
+    }
+  
+    .wrapper {
+      display: flex;
+      justify-content: center; /* Menyusun elemen secara horizontal di tengah */
+      align-items: center; /* Menyusun elemen secara vertikal di tengah */
+      height: 100%; /* Mengatur wrapper untuk memenuhi tinggi layar */
+    }
+  
+    .container {
+      padding: 20px;
+      border: 1px solid #dddddd00;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      max-width: 700px;
+      width: 100%; /* Memastikan konten responsif */
+      background-color: #ffffff00; /* Menambahkan warna latar belakang */
+    }
+  </style>
+  
+  <div class="wrapper">
+    <div class="container">
+      <h1 class="text-center">Data Hewan</h1>
+  
+      <!-- Card to contain the form and the list -->
+      <div class="card p-4 mt-4">
+          <!-- Form untuk menambahkan Data Hewan -->
+          <form id="addDataForm" class="my-4">
+              <div class="row">
+                  <div class="col-md-6">
+                      <div class="input-group">
+                          <input type="text" id="newTask" class="form-control" placeholder="Nama Hewan..." required>
+                      </div>
+                  </div>
+                  <div class="col-md-6">
+                      <div class="input-group mt-2 mt-md-0">
+                          <input type="text" id="newClass" class="form-control" placeholder="Kelas (e.g., Mamalia)" required>
+                      </div>
+                  </div>
+              </div>
+              <div class="input-group-append mt-3">
+                  <button type="submit" class="btn btn-primary">Add Data</button>
+              </div>
+          </form>
+  
+          <!-- Daftar Hewan -->
+          <ul id="todoList" class="list-group">
+              <!-- Data Hewan akan muncul di sini -->
+          </ul>
+      </div> <!-- End of Card -->
+  
+      <!-- Modal untuk Edit Data Hewan -->
+      <div id="editModal" class="modal fade" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <h5 class="modal-title" id="editModalLabel">Edit Data Hewan</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                      <form id="editTodoForm">
+                          <div class="form-group">
+                              <label for="editTask">Nama Hewan</label>
+                              <input type="text" id="editTask" class="form-control" required>
+                          </div>
+                          <div class="form-group mt-2">
+                              <label for="editClass">Kelas</label>
+                              <input type="text" id="editClass" class="form-control" required>
+                          </div>
+                          <button type="submit" class="btn btn-primary mt-3">Save Changes</button>
+                      </form>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+  
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  $(document).ready(function () {
+      // Add new data hewan
+      $('#addDataForm').on('submit', function (e) {
+          e.preventDefault(); // Prevent page refresh
+          const namahewan = $('#newTask').val().trim(); // Get the input value for namahewan
+          const kelas = $('#newClass').val().trim(); // Get the input value for kelas
+          
+          if (namahewan && kelas) {
+              $.ajax({
+                  url: '/datahewan', // Endpoint for adding data
+                  type: 'POST', // HTTP method for adding data
+                  contentType: 'application/json', // Data format being sent
+                  data: JSON.stringify({ namahewan: namahewan, kelas: kelas }), // Send both namahewan and kelas
+                  success: function (newData) {
+                      // Add the new data to the list
+                      $('#todoList').append(`
+                          <li class="list-group-item d-flex justify-content-between align-items-center">
+                              <span>${newData.namahewan} (${newData.kelas})</span>
+                              <div>
+                                  <button class="btn btn-sm btn-success mr-2 editBtn" data-id="${newData.id}">Edit</button>
+                                  <button class="btn btn-sm btn-danger deleteBtn" data-id="${newData.id}">Delete</button>
+                              </div>
+                          </li>
+                      `);
+                      $('#newTask').val(''); // Clear the input for namahewan
+                      $('#newClass').val(''); // Clear the input for kelas
+                  },
+                  error: function (error) {
+                      console.error("Error adding data:", error.responseText);
+                  }
+              });
+          }
+      });
+  
+      // Delete data hewan
+      $('#todoList').on('click', '.deleteBtn', function () {
+          const id = $(this).data('id');
+          $.ajax({
+              url: '/datahewan/' + id, // Endpoint to delete data by ID
+              type: 'DELETE',
+              success: function () {
+                  // Remove the item from the list
+                  $(this).closest('li').remove();
+              }
+          });
+      });
+  
+      // Edit data hewan
+      let editId;
+      $('#todoList').on('click', '.editBtn', function () {
+          editId = $(this).data('id');
+          const currentNamaHewan = $(this).closest('li').find('span').text().split('(')[0].trim(); // Get namahewan
+          const currentKelas = $(this).closest('li').find('span').text().split('(')[1].replace(')', '').trim(); // Get kelas
+          $('#editTask').val(currentNamaHewan); // Set modal input with current task
+          $('#editClass').val(currentKelas); // Set modal input with current kelas
+          $('#editModal').modal('show'); // Show the modal
+      });
+  
+      // Save changes to data hewan
+      $('#editTodoForm').on('submit', function (e) {
+          e.preventDefault(); // Prevent page refresh
+          const namahewan = $('#editTask').val().trim();
+          const kelas = $('#editClass').val().trim();
+          
+          if (namahewan && kelas) {
+              $.ajax({
+                  url: '/datahewan/' + editId, // Endpoint to update data by ID
+                  type: 'PUT',
+                  data: JSON.stringify({ namahewan: namahewan, kelas: kelas }), // Send both namahewan and kelas
+                  contentType: 'application/json',
+                  success: function () {
+                      location.reload(); // Reload the page to show updated data
+                  }
+              });
+          }
+      });
+  });
+  </script>
+  
